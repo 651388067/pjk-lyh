@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { api } from '../api'
 import type { Product } from '../types'
 import LoadingState from '../components/LoadingState.vue'
@@ -7,6 +7,13 @@ import LoadingState from '../components/LoadingState.vue'
 const products = ref<Product[]>([])
 const loading = ref(true)
 const error = ref('')
+const searchQuery = ref('')
+
+const filteredProducts = computed(() => {
+  const q = searchQuery.value.toLowerCase().trim()
+  if (!q) return products.value
+  return products.value.filter(p => p.title.toLowerCase().includes(q))
+})
 
 onMounted(async () => {
   try {
@@ -24,13 +31,23 @@ onMounted(async () => {
   <div class="history">
     <h2>历史记录</h2>
 
+    <input
+      v-model="searchQuery"
+      type="text"
+      placeholder="搜索商品..."
+      class="search-input"
+    />
+
     <LoadingState v-if="loading" />
     <p v-else-if="error" class="error">{{ error }}</p>
-    <p v-else-if="!products.length" class="empty">暂无记录</p>
+    <p v-else-if="!filteredProducts.length" class="empty">
+      暂无记录，
+      <router-link to="/">去解析第一个商品</router-link>
+    </p>
 
     <div v-else class="list">
       <router-link
-        v-for="p in products"
+        v-for="p in filteredProducts"
         :key="p.id"
         :to="{ name: 'product', params: { id: p.id } }"
         class="item"
@@ -78,4 +95,15 @@ h2 { margin: 0 0 20px; }
 .date { color: #999; font-size: 12px; }
 .empty { color: #999; text-align: center; padding: 40px; }
 .error { color: #e53935; text-align: center; }
+.search-input {
+  width: 100%;
+  padding: 10px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-input:focus { border-color: #3b82f6; }
 </style>

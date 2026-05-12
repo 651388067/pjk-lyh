@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { Script } from '../types'
 
 defineProps<{ script: Script }>()
 
-function copyScript(script: Script) {
+const copied = ref(false)
+
+async function copyScript(script: Script) {
   const text = [
     `HOOK: ${script.hook}`,
     '',
@@ -14,7 +17,9 @@ function copyScript(script: Script) {
     `CTA: ${script.cta}`,
     `时长: ${script.duration}`
   ].join('\n')
-  navigator.clipboard.writeText(text)
+  await navigator.clipboard.writeText(text)
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 2000)
 }
 </script>
 
@@ -22,7 +27,7 @@ function copyScript(script: Script) {
   <div class="script-card">
     <div class="header">
       <h3>视频脚本</h3>
-      <button class="copy-btn" @click="copyScript(script)">复制</button>
+      <button class="copy-btn" :class="{ copied }" @click="copyScript(script)">{{ copied ? '已复制' : '复制' }}</button>
     </div>
     <div class="hook">
       <strong>Hook (0-3s):</strong> {{ script.hook }}
@@ -102,4 +107,5 @@ h3 { margin: 0; font-size: 16px; }
   margin-bottom: 8px;
 }
 .duration { font-size: 12px; color: #999; }
+.copy-btn.copied { background: #059669; }
 </style>

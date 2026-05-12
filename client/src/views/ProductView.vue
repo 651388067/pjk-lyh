@@ -87,7 +87,10 @@ async function generateScript() {
         <ScriptCard :script="script" />
       </div>
 
-      <p v-if="error" class="error">{{ error }}</p>
+      <div v-if="error" class="error-banner">
+        <p>{{ error }}</p>
+        <button @click="error = ''">关闭</button>
+      </div>
     </template>
   </div>
 </template>
@@ -116,4 +119,22 @@ async function generateScript() {
 }
 .section { margin-top: 8px; }
 .error { color: #e53935; text-align: center; font-size: 14px; }
+.error-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+.error-banner p { margin: 0; color: #dc2626; font-size: 14px; }
+.error-banner button {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: underline;
+}
 </style>

@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { Copywriter } from '../types'
 
 defineProps<{ copywriter: Copywriter }>()
 
-function copyText(text: string) {
-  navigator.clipboard.writeText(text)
+const copied = ref(false)
+
+async function copyText(text: string) {
+  await navigator.clipboard.writeText(text)
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 2000)
 }
 </script>
 
@@ -12,9 +17,9 @@ function copyText(text: string) {
   <div class="copywriter-card">
     <div class="header">
       <h3>{{ copywriter.title }}</h3>
-      <button class="copy-btn" @click="copyText(
+      <button class="copy-btn" :class="{ copied }" @click="copyText(
         `${copywriter.title}\n\n${copywriter.body}\n\n${copywriter.hashtags.join(' ')}`
-      )">复制</button>
+      )">{{ copied ? '已复制' : '复制' }}</button>
     </div>
     <p class="body">{{ copywriter.body }}</p>
     <div class="hashtags">
@@ -50,6 +55,7 @@ h3 { margin: 0; font-size: 16px; }
   font-size: 13px;
 }
 .copy-btn:hover { background: #059669; }
+.copy-btn.copied { background: #059669; }
 .body {
   white-space: pre-line;
   line-height: 1.6;
