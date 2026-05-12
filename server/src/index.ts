@@ -1,11 +1,14 @@
 import express from 'express'
 import { getDb, closeDb } from './db/index.js'
 import { errorHandler } from './middleware/errorHandler.js'
+import productRouter from './routes/product.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
 
 app.use(express.json())
+
+app.use('/api/products', productRouter)
 
 // 健康检查
 app.get('/api/health', (_req, res) => {
