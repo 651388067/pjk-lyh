@@ -2,6 +2,7 @@ import express from 'express'
 import { getDb, closeDb } from './db/index.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import productRouter from './routes/product.js'
+import aiRouter from './routes/ai.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -9,6 +10,7 @@ const PORT = process.env.PORT || 3001
 app.use(express.json())
 
 app.use('/api/products', productRouter)
+app.use('/api/ai', aiRouter)
 
 // 健康检查
 app.get('/api/health', (_req, res) => {
