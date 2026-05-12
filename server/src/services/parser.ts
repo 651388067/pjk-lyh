@@ -23,8 +23,10 @@ let browser: Browser | null = null
 
 async function getBrowser(): Promise<Browser> {
   if (!browser || !browser.isConnected()) {
-    const puppeteer = await import('puppeteer')
-    browser = await puppeteer.default.launch({
+    const StealthPlugin = (await import('puppeteer-extra-plugin-stealth')).default
+    const puppeteerExtra = (await import('puppeteer-extra')).default
+    puppeteerExtra.use(StealthPlugin())
+    browser = await puppeteerExtra.launch({
       headless: true,
       args: [
         '--no-sandbox',
@@ -32,7 +34,7 @@ async function getBrowser(): Promise<Browser> {
         '--disable-dev-shm-usage',
         '--disable-gpu'
       ]
-    })
+    }) as Browser
   }
   return browser
 }
