@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(git config *)",
+      "Bash(git -C e:/ai-tiktok-system/ai-tiktok-system status)",
+      "Bash(ls -d node_modules)",
+      "Bash(ls -d client/node_modules)",
+      "Bash(git add *)"
+    ]
+  }
+}
