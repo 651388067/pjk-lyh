@@ -5,6 +5,7 @@ import { errorHandler } from './middleware/errorHandler.js'
 import productRouter from './routes/product.js'
 import aiRouter from './routes/ai.js'
 import { publishProduct } from './services/tiktok-shop.js'
+import { closeBrowser } from './services/parser.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -50,7 +51,8 @@ const server = app.listen(PORT, () => {
 
 function shutdown(signal: string) {
   console.log(`[${signal}] Shutting down...`)
-  server.close(() => {
+  server.close(async () => {
+    await closeBrowser()
     closeDb()
     process.exit(0)
   })

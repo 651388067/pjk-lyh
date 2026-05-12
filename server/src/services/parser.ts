@@ -1,5 +1,5 @@
-import axios from 'axios'
 import * as cheerio from 'cheerio'
+import type { Browser } from 'puppeteer'
 
 interface ParsedProduct {
   title: string
@@ -19,8 +19,79 @@ export class ParseError extends Error {
   }
 }
 
+let browser: Browser | null = null
+
+async function getBrowser(): Promise<Browser> {
+  if (!browser || !browser.isConnected()) {
+    const puppeteer = await import('puppeteer')
+    browser = await puppeteer.default.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
+    })
+  }
+  return browser
+}
+
+export async function closeBrowser(): Promise<void> {
+  if (browser) {
+    await browser.close()
+    browser = null
+  }
+}
+
+function extractDataFromHtml(html: string, pageUrl: string): ParsedProduct {
+  const $ = cheerio.load(html)
+
+  // 标题
+  const title =
+    $('meta[property="og:title"]').attr('content')?.trim() ||
+    $('h1').first().text().trim() ||
+    $('.offer-title').text().trim() ||
+    $('title').text().trim() ||
+    '未知商品'
+
+  // 价格
+  const price =
+    $('meta[property="product:price:amount"]').attr('content') ||
+    $('.price-original').text().trim() ||
+    $('.price').first().text().trim() ||
+    $('[class*="price"]').first().text().trim() ||
+    '价格面议'
+
+  // 图片
+  const images: string[] = []
+  $('meta[property="og:image"]').each((_, el) => {
+    const src = $(el).attr('content')
+    if (src) {
+      try { images.push(new URL(src, pageUrl).href) } catch {}
+    }
+  })
+  if (images.length === 0) {
+    $('.tab-img img, .image-gallery img, .main-image img, img[src*=".jpg"], img[src*=".png"]').each((_, el) => {
+      const src = $(el).attr('src') || $(el).attr('data-src')
+      if (src && !src.includes('data:image') && images.length < 10) {
+        try { images.push(new URL(src, pageUrl).href) } catch {}
+      }
+    })
+  }
+
+  // 规格
+  const specs: Record<string, string> = {}
+  $('.spec-item, .attribute-item, .sku-item').each((_, el) => {
+    const key = $(el).find('.spec-name, .attribute-name').text().trim()
+    const value = $(el).find('.spec-value, .attribute-value').text().trim()
+    if (key && value) specs[key] = value
+  })
+
+  return { title, price, images, specs }
+}
+
 export async function parseProductUrl(url: string): Promise<ParsedProduct> {
-  // URL 校验
   let parsedUrl: URL
   try {
     parsedUrl = new URL(url)
@@ -32,63 +103,32 @@ export async function parseProductUrl(url: string): Promise<ParsedProduct> {
   }
 
   try {
-    const { data: html } = await axios.get(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    const b = await getBrowser()
+    const page = await b.newPage()
+
+    try {
+      await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+      )
+      await page.setExtraHTTPHeaders({
         'Accept-Language': 'zh-CN,zh;q=0.9'
-      },
-      timeout: 15000,
-      maxContentLength: 5 * 1024 * 1024
-    })
+      })
 
-    const $ = cheerio.load(html)
+      await page.goto(url, {
+        waitUntil: 'networkidle2',
+        timeout: 30000
+      })
 
-    // 标题
-    const title =
-      $('h1[data-testid="product-title"]').text().trim() ||
-      $('.offer-title').text().trim() ||
-      $('h1').first().text().trim() ||
-      '未知商品'
+      // 等待商品内容
+      await page.waitForSelector('h1, meta[property="og:title"], [class*="title"]', { timeout: 10000 }).catch(() => {})
 
-    // 价格
-    const price =
-      $('.price-original').text().trim() ||
-      $('.price').first().text().trim() ||
-      $('[data-testid="price"]').text().trim() ||
-      '价格面议'
-
-    // 图片
-    const images: string[] = []
-    $('.tab-img img, .image-gallery img, .main-image img').each((_, el) => {
-      const src = $(el).attr('src')
-      if (src && !src.includes('data:image') && images.length < 10) {
-        try {
-          images.push(new URL(src, url).href)
-        } catch {
-          // 跳过无法解析的 URL
-        }
-      }
-    })
-
-    // 规格
-    const specs: Record<string, string> = {}
-    $('.spec-item, .attribute-item, .sku-item').each((_, el) => {
-      const key = $(el).find('.spec-name, .attribute-name').text().trim()
-      const value = $(el).find('.spec-value, .attribute-value').text().trim()
-      if (key && value) specs[key] = value
-    })
-
-    return { title, price, images, specs }
+      const html = await page.content()
+      return extractDataFromHtml(html, url)
+    } finally {
+      await page.close()
+    }
   } catch (err) {
     if (err instanceof ParseError) throw err
-    if (axios.isAxiosError(err)) {
-      throw new ParseError(
-        `请求失败: ${err.message}`,
-        url,
-        err
-      )
-    }
     throw new ParseError('解析商品页面时发生错误', url, err)
   }
 }
