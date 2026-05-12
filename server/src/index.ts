@@ -3,6 +3,7 @@ import { getDb, closeDb } from './db/index.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import productRouter from './routes/product.js'
 import aiRouter from './routes/ai.js'
+import { publishProduct } from './services/tiktok-shop.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -15,6 +16,17 @@ app.use('/api/ai', aiRouter)
 // 健康检查
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' })
+})
+
+// TikTok Shop 发布
+app.post('/api/tiktok/publish', async (req, res) => {
+  const { productId, copywriterId, scriptId } = req.body
+  if (!productId) {
+    res.status(400).json({ error: '请提供 productId' })
+    return
+  }
+  const result = await publishProduct(productId, copywriterId, scriptId)
+  res.status(202).json(result)
 })
 
 // 404 处理
